@@ -24,6 +24,17 @@ from models.itransformer import *
 from train import *
 from prediction import *
 
+import argparse
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Train iTransformer model and generate submission file.")
+    parser.add_argument('--epochs', type=int, default=20, help='Number of training epochs')
+    parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
+    parser.add_argument('--batch_size', type=int, default=64, help='Batch size for training')
+    parser.add_argument('--submission_name', type=str, default='submission_final_fft_256_itransformer.csv',
+                        help='Filename for final submission output')
+    return parser.parse_args()
+
 # -------------------------- 공통 설정 --------------------------
 def seed_everything(seed=42):
     random.seed(seed)
@@ -92,29 +103,30 @@ def prepare_train_test_data(metrics_train, merged_df):
     return train_df, test_df
 
 # -------------------------- 모델 학습 --------------------------
-def train_and_predict_models(X_tensor, test_X_tensor, train_df, targets_binary, target_multiclass):
+def train_and_predict_models(X_tensor, test_X_tensor, train_df, targets_binary, target_multiclass, epochs, lr, batch_size):
     binary_preds = {}
     for col in targets_binary:
         y_tensor = torch.tensor(train_df[col].values, dtype=torch.long)
         dataset = TensorDataset(X_tensor, y_tensor)
-        dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
+        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
         model_bin = TransformerClassifier(input_dim=X_tensor.shape[-1], num_classes=2)
-        train_model(model_bin, dataloader, nn.CrossEntropyLoss(), optim.Adam(model_bin.parameters(), lr=0.001), epochs=20)
+        train_model(model_bin, dataloader, nn.CrossEntropyLoss(), optim.Adam(model_bin.parameters(), lr=lr), epochs=epochs)
         binary_preds[col] = predict(model_bin, test_X_tensor)
 
     y_multi_tensor = torch.tensor(train_df[target_multiclass].values, dtype=torch.long)
     dataset_multi = TensorDataset(X_tensor, y_multi_tensor)
-    dataloader_multi = DataLoader(dataset_multi, batch_size=64, shuffle=True)
+    dataloader_multi = DataLoader(dataset_multi, batch_size=batch_size, shuffle=True)
 
     model_multi = TransformerClassifier(input_dim=X_tensor.shape[-1], num_classes=3)
-    train_model(model_multi, dataloader_multi, nn.CrossEntropyLoss(), optim.Adam(model_multi.parameters(), lr=0.001), epochs=20)
+    train_model(model_multi, dataloader_multi, nn.CrossEntropyLoss(), optim.Adam(model_multi.parameters(), lr=lr), epochs=epochs)
     multiclass_pred = predict(model_multi, test_X_tensor)
 
     return binary_preds, multiclass_pred
 
+
 # -------------------------- 제출 파일 생성 --------------------------
-def generate_submission(sample_submission, binary_preds, multiclass_pred):
+def generate_submission(sample_submission, binary_preds, multiclass_pred, filename):
     sample_submission['lifelog_date'] = pd.to_datetime(sample_submission['lifelog_date']).dt.date
     submission_final = sample_submission[['subject_id', 'sleep_date', 'lifelog_date']].copy()
     submission_final['ID'] = submission_final['subject_id'] + '_' + submission_final['lifelog_date'].astype(str)
@@ -124,11 +136,12 @@ def generate_submission(sample_submission, binary_preds, multiclass_pred):
         submission_final[col] = binary_preds[col].astype(int)
 
     submission_final = submission_final[['subject_id', 'sleep_date', 'lifelog_date', 'Q1', 'Q2', 'Q3', 'S1', 'S2', 'S3']]
-    submission_final.to_csv("submission_final_fft_256_itransformer.csv", index=False)
+    submission_final.to_csv(filename, index=False)
 
 # -------------------------- 메인 --------------------------
 def main():
     seed_everything(42)
+    args = parse_args()
     data_dir = 'dataset/ch2025_data_items'
 
     lifelog_data = load_parquet_files(data_dir)
@@ -182,8 +195,8 @@ def main():
 
     # Training and test data preparation
     X_tensor, test_X_tensor = prepare_data_itransformer(X, test_X)
-    binary_preds, multiclass_pred = train_and_predict_models(X_tensor, test_X_tensor, train_df, targets_binary, target_multiclass)
-    generate_submission(sample_submission, binary_preds, multiclass_pred)
+    binary_preds, multiclass_pred = train_and_predict_models(X_tensor, test_X_tensor, train_df, targets_binary, target_multiclass, args.epochs, args.lr, args.batch_size)
+    generate_submission(sample_submission, binary_preds, multiclass_pred, args.submission_name)
 
 if __name__ == "__main__":
     main()
