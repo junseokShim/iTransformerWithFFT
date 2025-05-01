@@ -111,17 +111,18 @@ def train_and_predict_models(X_tensor, test_X_tensor, train_df, targets_binary, 
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
         model_bin = TransformerClassifier(input_dim=X_tensor.shape[-1], num_classes=2)
-        train_model(model_bin, dataloader, nn.CrossEntropyLoss(), optim.Adam(model_bin.parameters(), lr=lr), epochs=epochs)
-        binary_preds[col] = predict(model_bin, test_X_tensor)
+        train_model(model_bin, dataloader, nn.CrossEntropyLoss(), optim.Adam(model_bin.parameters(), lr=lr), col = col, epochs=epochs)
+        binary_preds[col] = predict(model_bin, test_X_tensor, col)
 
     y_multi_tensor = torch.tensor(train_df[target_multiclass].values, dtype=torch.long)
     dataset_multi = TensorDataset(X_tensor, y_multi_tensor)
     dataloader_multi = DataLoader(dataset_multi, batch_size=batch_size, shuffle=True)
 
     model_multi = TransformerClassifier(input_dim=X_tensor.shape[-1], num_classes=3)
-    train_model(model_multi, dataloader_multi, nn.CrossEntropyLoss(), optim.Adam(model_multi.parameters(), lr=lr), epochs=epochs)
-    multiclass_pred = predict(model_multi, test_X_tensor)
-
+    train_model(model_multi, dataloader_multi, nn.CrossEntropyLoss(), optim.Adam(model_multi.parameters(), lr=lr), col = 'S1', epochs=epochs)
+    
+    multiclass_pred = predict(model_multi, test_X_tensor, 'S1')
+    
     return binary_preds, multiclass_pred
 
 
@@ -137,6 +138,7 @@ def generate_submission(sample_submission, binary_preds, multiclass_pred, filena
 
     submission_final = submission_final[['subject_id', 'sleep_date', 'lifelog_date', 'Q1', 'Q2', 'Q3', 'S1', 'S2', 'S3']]
     submission_final.to_csv(filename, index=False)
+    print(f"✅ 제출 파일 생성 완료: {filename}")
 
 # -------------------------- 메인 --------------------------
 def main():

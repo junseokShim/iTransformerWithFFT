@@ -1,33 +1,38 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 # Fourier Self-Attention 정의 (실수 연산만 사용)
 class FourierSelfAttention(nn.Module):
-    def __init__(self, d_model):
+    def __init__(self, d_model, heads=8, dropout=0.1):
         super().__init__()
-        self.proj_q = nn.Linear(d_model, d_model)
-        self.proj_k = nn.Linear(d_model, d_model)
-        self.proj_v = nn.Linear(d_model, d_model)
-        self.out = nn.Linear(d_model, d_model)
-        self.scale = d_model ** -0.5
+        self.heads = heads
+        self.scale = (d_model // heads) ** -0.5
+
+        self.to_qkv = nn.Linear(d_model, d_model * 3, bias=False)
+        self.to_out = nn.Sequential(
+            nn.Linear(d_model, d_model),
+            nn.Dropout(dropout)
+        )
 
     def forward(self, x):
-        Q = self.proj_q(x)  # [B, T, D]
-        K = self.proj_k(x)
-        V = self.proj_v(x)
+        B, T, C = x.shape
+        qkv = self.to_qkv(x).chunk(3, dim=-1)
+        q, k, v = map(lambda t: t.view(B, T, self.heads, C // self.heads).transpose(1, 2), qkv)
 
-        # Fourier 변환 (실수부만 사용)
-        Q_fft = torch.fft.rfft(Q.float(), dim=1).real
-        K_fft = torch.fft.rfft(K.float(), dim=1).real
-        V_fft = torch.fft.rfft(V.float(), dim=1).real
+        # Fourier Transform on queries and keys
+        q_fft = torch.fft.rfft(q.float(), dim=-2)
+        k_fft = torch.fft.rfft(k.float(), dim=-2)
 
-        attn_scores = torch.matmul(Q_fft, K_fft.transpose(-2, -1)) * self.scale
-        attn_weights = torch.softmax(attn_scores, dim=-1)
+        attn = (q_fft.conj() * k_fft).sum(dim=-1).real * self.scale
+        attn = F.softmax(attn, dim=-1)
 
-        output_fft = torch.matmul(attn_weights, V_fft)
-        output = torch.fft.irfft(output_fft.to(torch.complex64), n=x.size(1), dim=1)
+        v_fft = torch.fft.rfft(v.float(), dim=-2)
+        out_fft = attn.unsqueeze(-1) * v_fft
+        out = torch.fft.irfft(out_fft, n=T, dim=-2)
 
-        return self.out(output)
+        out = out.transpose(1, 2).reshape(B, T, C)
+        return self.to_out(out)
     
     # Transformer 모델 정의 (FourierSelfAttention + iTransformer 입력 방식 적용)
 class TransformerClassifier(nn.Module):
