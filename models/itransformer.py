@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 # Fourier Self-Attention 정의 (실수 연산만 사용)
 class FourierSelfAttention(nn.Module):
-    def __init__(self, d_model, heads=8, dropout=0.1):
+    def __init__(self, d_model, heads=4, dropout=0.1):
         super().__init__()
         self.heads = heads
         self.scale = (d_model // heads) ** -0.5

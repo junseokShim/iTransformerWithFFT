@@ -21,6 +21,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from sklearn.preprocessing import StandardScaler
 
 from models.itransformer import *
+from models.iftransformer import *
 from train import *
 from prediction import *
 
@@ -110,7 +111,8 @@ def train_and_predict_models(X_tensor, test_X_tensor, train_df, targets_binary, 
         dataset = TensorDataset(X_tensor, y_tensor)
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-        model_bin = TransformerClassifier(input_dim=X_tensor.shape[-1], num_classes=2)
+        #model_bin = TransformerClassifier(input_dim=X_tensor.shape[-1], num_classes=2)
+        model_bin = IFTransformerClassifier(input_dim=X_tensor.shape[-1], num_classes=2)
         train_model(model_bin, dataloader, nn.CrossEntropyLoss(), optim.Adam(model_bin.parameters(), lr=lr), col = col, epochs=epochs)
         binary_preds[col] = predict(model_bin, test_X_tensor, col)
 
@@ -118,7 +120,8 @@ def train_and_predict_models(X_tensor, test_X_tensor, train_df, targets_binary, 
     dataset_multi = TensorDataset(X_tensor, y_multi_tensor)
     dataloader_multi = DataLoader(dataset_multi, batch_size=batch_size, shuffle=True)
 
-    model_multi = TransformerClassifier(input_dim=X_tensor.shape[-1], num_classes=3)
+    #model_multi = TransformerClassifier(input_dim=X_tensor.shape[-1], num_classes=3) # SOTA
+    model_multi = IFTransformerClassifier(input_dim=X_tensor.shape[-1], num_classes=3)
     train_model(model_multi, dataloader_multi, nn.CrossEntropyLoss(), optim.Adam(model_multi.parameters(), lr=lr), col = 'S1', epochs=epochs)
     
     multiclass_pred = predict(model_multi, test_X_tensor, 'S1')
