@@ -65,7 +65,7 @@ class PositionalEncoding(nn.Module):
 
 # 4. 최종 Transformer Classifier
 class IFTransformerClassifier(nn.Module):
-    def __init__(self, input_dim, num_classes, hidden_dim=256, n_layers=12, max_len=5000, dropout=0.1):
+    def __init__(self, input_dim, num_classes, hidden_dim=256, n_layers=6, max_len=5000, dropout=0.1):
         super().__init__()
         self.fc_in = nn.Linear(input_dim, hidden_dim)
         self.pos_embed = PositionalEncoding(hidden_dim, max_len)

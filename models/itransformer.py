@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 # Fourier Self-Attention 정의 (실수 연산만 사용)
 class FourierSelfAttention(nn.Module):
-    def __init__(self, d_model, heads=4, dropout=0.1):
+    def __init__(self, d_model, heads=32, dropout=0.1):
         super().__init__()
         self.heads = heads
         self.scale = (d_model // heads) ** -0.5
@@ -33,17 +33,43 @@ class FourierSelfAttention(nn.Module):
 
         out = out.transpose(1, 2).reshape(B, T, C)
         return self.to_out(out)
+            
+
     
-    # Transformer 모델 정의 (FourierSelfAttention + iTransformer 입력 방식 적용)
-class TransformerClassifier(nn.Module):
-    def __init__(self, input_dim, num_classes, hidden_dim=64):
+# Transformer 모델 정의 (FourierSelfAttention + iTransformer 입력 방식 적용)
+class ITransformerClassifier(nn.Module):
+    def __init__(self, input_dim, num_classes, hidden_dim, num_heads, pretrained_encoder=None):
         super().__init__()
         self.fc_in = nn.Linear(input_dim, hidden_dim)
-        self.fourier_attn = FourierSelfAttention(hidden_dim)
+        self.fourier_attn = pretrained_encoder if pretrained_encoder else FourierSelfAttention(hidden_dim, num_heads)
         self.fc_out = nn.Linear(hidden_dim, num_classes)
 
     def forward(self, x):
-        x = self.fc_in(x.squeeze(1)).unsqueeze(1)  # [B, 1, D] → [B, 1, H]
+        x = self.fc_in(x)
         x = self.fourier_attn(x)
         x = x.mean(dim=1)  # 평균 풀링
         return self.fc_out(x)
+    
+
+# Transformer Pretrainer 정의 (FourierSelfAttention + iTransformer 입력 방식 적용)
+class ITransformerPretrainer(nn.Module):
+    def __init__(self, input_dim, hidden_dim, num_heads):
+        super().__init__()
+        self.fc_in = nn.Linear(input_dim, hidden_dim)
+        self.encoder = FourierSelfAttention(num_heads)
+        self.decoder = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, input_dim)  # 복원: 원래 차원
+        )
+
+    def forward(self, x, mask):
+        """
+        x: [B, T, D], mask: [B, T] → 복원 loss는 masked 위치에 대해서만 계산
+        """
+        x_encoded = self.fc_in(x)
+        x_encoded = self.encoder(x_encoded)
+        x_decoded = self.decoder(x_encoded)  # [B, T, D]
+
+        return x_decoded  # 전체 출력 (손실 계산 시 mask로 걸러냄)
+

@@ -22,6 +22,9 @@ from sklearn.preprocessing import StandardScaler
 
 from models.itransformer import *
 from models.iftransformer import *
+from models.transformer import *
+from models.advanced_transformer import *
+
 from train import *
 from prediction import *
 
@@ -31,9 +34,10 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Train iTransformer model and generate submission file.")
     parser.add_argument('--epochs', type=int, default=20, help='Number of training epochs')
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
+    parser.add_argument('--hidden', type=float, default=64, help='Hidden layer dimension size')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size for training')
-    parser.add_argument('--submission_name', type=str, default='submission_final_fft_256_itransformer.csv',
-                        help='Filename for final submission output')
+    parser.add_argument('--num_heads', type=int, default=32, help='Number of attention heads')
+    parser.add_argument('--model_name', type=str, default='itransformer', help='Model name')
     return parser.parse_args()
 
 # -------------------------- 공통 설정 --------------------------
@@ -104,29 +108,85 @@ def prepare_train_test_data(metrics_train, merged_df):
     return train_df, test_df
 
 # -------------------------- 모델 학습 --------------------------
-def train_and_predict_models(X_tensor, test_X_tensor, train_df, targets_binary, target_multiclass, epochs, lr, batch_size):
+def train_and_predict_models(X_tensor, test_X_tensor, train_df, targets_binary, target_multiclass, epochs, lr, batch_size, hidden_dim, model_name, num_heads):
     binary_preds = {}
+    binary_loss = {}
+    binary_f1 = {}
+
+    f1_scores = []
+
+    # 모델 학습 및 예측 (pretrain)
+    if model_name == 'pretrain':
+        dataset = TensorDataset(X_tensor)
+        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+        model = ITransformerPretrainer(input_dim=X_tensor.shape[-1], hidden_dim=int(hidden_dim), num_heads=int(num_heads))
+        optimizer = optim.Adam(model.parameters(), lr=0.0001)
+        train_pretraining_model_with_val(model, dataloader, optimizer, epochs=epochs)
+        torch.save(model.state_dict(), f"weights/pretrained_itransformer_{int(hidden_dim)}_{int(num_heads)}.pt")
+        return
+
     for col in targets_binary:
         y_tensor = torch.tensor(train_df[col].values, dtype=torch.long)
         dataset = TensorDataset(X_tensor, y_tensor)
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+        
+        if model_name == 'itransformer':
+            model_bin = ITransformerClassifier(input_dim=X_tensor.shape[-1], num_classes=2, hidden_dim=int(hidden_dim), num_heads=int(num_heads)) #SOTA
 
-        #model_bin = TransformerClassifier(input_dim=X_tensor.shape[-1], num_classes=2)
-        model_bin = IFTransformerClassifier(input_dim=X_tensor.shape[-1], num_classes=2)
-        train_model(model_bin, dataloader, nn.CrossEntropyLoss(), optim.Adam(model_bin.parameters(), lr=lr), col = col, epochs=epochs)
+        elif model_name == 'fine-tunning':
+            # 1. Pretraining된 모델 객체 생성 및 weight 불러오기
+            pretrained_model = ITransformerPretrainer(input_dim=X_tensor.shape[-1], hidden_dim=int(hidden_dim), num_heads=int(num_heads))
+            pretrained_model.load_state_dict(torch.load(f"weights/pretrained_itransformer_{int(hidden_dim)}_{int(num_heads)}.pt"))
+
+            
+            # 2. encoder만 추출
+            pretrained_encoder = pretrained_model.encoder
+
+            # ✅ FourierSelfAttention 파라미터 freeze
+            for param in pretrained_encoder.parameters():
+                param.requires_grad = False
+                        
+            model_bin = ITransformerClassifier(input_dim=X_tensor.shape[-1], num_classes=2, hidden_dim=int(hidden_dim), num_heads=int(num_heads), pretrained_encoder=pretrained_encoder)
+
+        binary_f1[col] = train_model(model_bin, dataloader, nn.CrossEntropyLoss(), optim.Adam(model_bin.parameters(), lr=lr), col = col, epochs=epochs)
         binary_preds[col] = predict(model_bin, test_X_tensor, col)
+        f1_scores.append(binary_f1[col])
 
     y_multi_tensor = torch.tensor(train_df[target_multiclass].values, dtype=torch.long)
     dataset_multi = TensorDataset(X_tensor, y_multi_tensor)
     dataloader_multi = DataLoader(dataset_multi, batch_size=batch_size, shuffle=True)
 
-    #model_multi = TransformerClassifier(input_dim=X_tensor.shape[-1], num_classes=3) # SOTA
-    model_multi = IFTransformerClassifier(input_dim=X_tensor.shape[-1], num_classes=3)
-    train_model(model_multi, dataloader_multi, nn.CrossEntropyLoss(), optim.Adam(model_multi.parameters(), lr=lr), col = 'S1', epochs=epochs)
-    
+    if model_name == 'itransformer':
+        model_multi = ITransformerClassifier(input_dim=X_tensor.shape[-1], num_classes=3, hidden_dim=int(hidden_dim), num_heads=int(num_heads)) # SOTA
+
+    elif model_name == 'fine-tunning':
+        pretrained_model = ITransformerPretrainer(input_dim=X_tensor.shape[-1], hidden_dim=int(hidden_dim), num_heads=int(num_heads))
+        pretrained_model.load_state_dict(torch.load(f"weights/pretrained_itransformer_{int(hidden_dim)}_{int(num_heads)}.pt"))
+
+        # 2. encoder만 추출
+        pretrained_encoder = pretrained_model.encoder
+
+        # ✅ FourierSelfAttention 파라미터 freeze
+        for param in pretrained_encoder.parameters():
+                param.requires_grad = False
+        model_multi = ITransformerClassifier(input_dim=X_tensor.shape[-1], num_classes=3, hidden_dim=int(hidden_dim), num_heads=int(num_heads), pretrained_encoder=pretrained_encoder)
+
+    multiclass_f1 = train_model(model_multi, dataloader_multi, nn.CrossEntropyLoss(), optim.Adam(model_multi.parameters(), lr=lr), col = 'S1', epochs=epochs)
+    f1_scores.append(multiclass_f1)
+
     multiclass_pred = predict(model_multi, test_X_tensor, 'S1')
+
+    avg_f1 = sum(f1_scores) / len(f1_scores)    
+
+    with open('logs.txt', 'a') as f:
+        f.write(f"hidden layer dim_size: {hidden_dim}\n")
+        f.write(f"multi head num : {num_heads}\n")
+        f.write(f"이진 분류 Valid Score : {[f'{col}: {binary_f1[col]}' for col in targets_binary]}\n")
+        f.write(f"다중 클래스 Valid Score : {'S1'}, {multiclass_f1}\n")
+        f.write(f"Avg F1 Score : {avg_f1}\n")
+        f.write("\n")
     
-    return binary_preds, multiclass_pred
+    return binary_preds, multiclass_pred, avg_f1
 
 
 # -------------------------- 제출 파일 생성 --------------------------
@@ -200,8 +260,21 @@ def main():
 
     # Training and test data preparation
     X_tensor, test_X_tensor = prepare_data_itransformer(X, test_X)
-    binary_preds, multiclass_pred = train_and_predict_models(X_tensor, test_X_tensor, train_df, targets_binary, target_multiclass, args.epochs, args.lr, args.batch_size)
-    generate_submission(sample_submission, binary_preds, multiclass_pred, args.submission_name)
+
+    if args.model_name == 'pretrain':
+        train_and_predict_models(X_tensor, test_X_tensor, train_df, \
+                                targets_binary, target_multiclass, \
+                                args.epochs, args.lr, args.batch_size, args.hidden, args.model_name, args.num_heads)
+        return
+    
+    binary_preds, multiclass_pred, avg_f1_score = train_and_predict_models(X_tensor, test_X_tensor, train_df, \
+                                    targets_binary, target_multiclass, \
+                                    args.epochs, args.lr, args.batch_size, args.hidden, args.model_name, args.num_heads)
+    
+    binary_preds, multiclass_pred
+    sum_f1_score = sum(binary_preds.values()) / len(binary_preds)
+    
+    generate_submission(sample_submission, binary_preds, multiclass_pred, f'submission/submission_{args.model_name}_hidden_{args.hidden}_head_{args.num_heads}_f1_{round(avg_f1_score, 4)}).csv')
 
 if __name__ == "__main__":
     main()
