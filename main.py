@@ -255,37 +255,6 @@ def main():
     sample_submission = pd.read_csv('dataset/ch2025_submission_sample.csv')
     merged_df = pd.read_csv('dataset/merged_df.csv')
 
-    test_keys = set(zip(pd.to_datetime(sample_submission['lifelog_date']).dt.date, sample_submission['subject_id']))
-
-    mACStatus_df = pd.read_parquet('dataset/ch2025_data_items/ch2025_mACStatus.parquet')
-    mActivity_df = pd.read_parquet('dataset/ch2025_data_items/ch2025_mActivity.parquet')
-    mAmbience_df = pd.read_parquet('dataset/ch2025_data_items/ch2025_mAmbience.parquet')
-    mBle_df = pd.read_parquet('dataset/ch2025_data_items/ch2025_mBle.parquet')
-    mGps_df = pd.read_parquet('dataset/ch2025_data_items/ch2025_mGps.parquet')
-    mLight_df = pd.read_parquet('dataset/ch2025_data_items/ch2025_mLight.parquet')
-    mScreenStatus_df =  pd.read_parquet('dataset/ch2025_data_items/ch2025_mScreenStatus.parquet')
-    mUsageStats_df = pd.read_parquet('dataset/ch2025_data_items/ch2025_mUsageStats.parquet')
-    mWifi_df = pd.read_parquet('dataset/ch2025_data_items/ch2025_mWifi.parquet')
-    wHr_df = pd.read_parquet('dataset/ch2025_data_items/ch2025_wHr.parquet')
-    wLight_df = pd.read_parquet('dataset/ch2025_data_items/ch2025_wLight.parquet')
-    wPedo_df = pd.read_parquet('dataset/ch2025_data_items/ch2025_wPedo.parquet')
-
-    dataframes = {
-        'mACStatus': (mACStatus_df, 'timestamp'),
-        'mActivity': (mActivity_df, 'timestamp'),
-        'mAmbience': (mAmbience_df, 'timestamp'),
-        'mBle': (mBle_df, 'timestamp'),
-        'mGps': (mGps_df, 'timestamp'),
-        'mLight': (mLight_df, 'timestamp'),
-        'mScreenStatus': (mScreenStatus_df, 'timestamp'),
-        'mUsageStats': (mUsageStats_df, 'timestamp'),
-        'mWifi': (mWifi_df, 'timestamp'),
-        'wHr': (wHr_df, 'timestamp'),
-        'wLight': (wLight_df, 'timestamp'),
-        'wPedo': (wPedo_df, 'timestamp'),
-    }
-
-    split_results = split_all_dataframes(dataframes, test_keys)
     train_df, test_df = prepare_train_test_data(metrics_train, merged_df)
 
     targets_binary = ['Q1', 'Q2', 'Q3', 'S2', 'S3']
