@@ -24,6 +24,7 @@ from models.itransformer import *
 from models.iftransformer import *
 from models.transformer import *
 from models.advanced_transformer import *
+from models.fftformer import * 
 
 from train import *
 from prediction import *
@@ -113,6 +114,8 @@ def train_and_predict_models(X_tensor, test_X_tensor, train_df, targets_binary, 
     binary_loss = {}
     binary_f1 = {}
 
+    print(X_tensor.shape, test_X_tensor.shape)
+
     f1_scores = []
 
     # 모델 학습 및 예측 (pretrain)
@@ -123,6 +126,15 @@ def train_and_predict_models(X_tensor, test_X_tensor, train_df, targets_binary, 
         optimizer = optim.Adam(model.parameters(), lr=0.0001)
         train_pretraining_model_with_val(model, dataloader, optimizer, epochs=epochs)
         torch.save(model.state_dict(), f"weights/pretrained_itransformer_{int(hidden_dim)}_{int(num_heads)}.pt")
+        return
+
+    elif model_name == 'pretrain_fftformer':
+        dataset = TensorDataset(X_tensor)
+        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+        model = FFTformerPretrainer(input_dim=X_tensor.shape[-1], hidden_dim=int(hidden_dim), num_heads=int(num_heads))
+        optimizer = optim.Adam(model.parameters(), lr=0.0001)
+        train_pretraining_model_with_val(model, dataloader, optimizer, epochs=epochs)
+        torch.save(model.state_dict(), f"weights/pretrained_fftformer_{int(hidden_dim)}_{int(num_heads)}.pt")
         return
 
     for col in targets_binary:
@@ -137,7 +149,6 @@ def train_and_predict_models(X_tensor, test_X_tensor, train_df, targets_binary, 
             # 1. Pretraining된 모델 객체 생성 및 weight 불러오기
             pretrained_model = ITransformerPretrainer(input_dim=X_tensor.shape[-1], hidden_dim=int(hidden_dim), num_heads=int(num_heads))
             pretrained_model.load_state_dict(torch.load(f"weights/pretrained_itransformer_{int(hidden_dim)}_{int(num_heads)}.pt"))
-
             
             # 2. encoder만 추출
             pretrained_encoder = pretrained_model.encoder
@@ -147,6 +158,21 @@ def train_and_predict_models(X_tensor, test_X_tensor, train_df, targets_binary, 
                 param.requires_grad = False
                         
             model_bin = ITransformerClassifier(input_dim=X_tensor.shape[-1], num_classes=2, hidden_dim=int(hidden_dim), num_heads=int(num_heads), pretrained_encoder=pretrained_encoder)
+
+        elif model_name == 'fine-tunning_fftformer':
+            # 1. Pretraining된 모델 객체 생성 및 weight 불러오기
+            pretrained_model = FFTformerPretrainer(input_dim=X_tensor.shape[-1], hidden_dim=int(hidden_dim), num_heads=int(num_heads))
+            pretrained_model.load_state_dict(torch.load(f"weights/pretrained_fftformer_{int(hidden_dim)}_{int(num_heads)}.pt"))
+
+            
+            # 2. encoder만 추출
+            pretrained_encoder = pretrained_model.encoder_layers
+
+            # ✅ FourierSelfAttention 파라미터 freeze
+            for param in pretrained_encoder.parameters():
+                param.requires_grad = False
+                        
+            model_bin = FFTformerClassifier(input_dim=X_tensor.shape[-1], num_classes=2, hidden_dim=int(hidden_dim), num_heads=int(num_heads), pretrained_encoder=pretrained_encoder)
 
         binary_f1[col] = train_model(model_bin, dataloader, nn.CrossEntropyLoss(), optim.Adam(model_bin.parameters(), lr=lr), col = col, epochs=epochs)
         binary_preds[col] = predict(model_bin, test_X_tensor, col)
@@ -170,6 +196,19 @@ def train_and_predict_models(X_tensor, test_X_tensor, train_df, targets_binary, 
         for param in pretrained_encoder.parameters():
                 param.requires_grad = False
         model_multi = ITransformerClassifier(input_dim=X_tensor.shape[-1], num_classes=3, hidden_dim=int(hidden_dim), num_heads=int(num_heads), pretrained_encoder=pretrained_encoder)
+
+    elif model_name == 'fine-tunning_fftformer':
+        pretrained_model = FFTformerPretrainer(input_dim=X_tensor.shape[-1], hidden_dim=int(hidden_dim), num_heads=int(num_heads))
+        pretrained_model.load_state_dict(torch.load(f"weights/pretrained_fftformer_{int(hidden_dim)}_{int(num_heads)}.pt"))
+
+        # 2. encoder만 추출
+        pretrained_encoder = pretrained_model.encoder_layers
+
+        # ✅ FourierSelfAttention 파라미터 freeze
+        for param in pretrained_encoder.parameters():
+                param.requires_grad = False
+        model_multi = FFTformerClassifier(input_dim=X_tensor.shape[-1], num_classes=3, hidden_dim=int(hidden_dim), num_heads=int(num_heads), pretrained_encoder=pretrained_encoder)
+
 
     multiclass_f1 = train_model(model_multi, dataloader_multi, nn.CrossEntropyLoss(), optim.Adam(model_multi.parameters(), lr=lr), col = 'S1', epochs=epochs)
     f1_scores.append(multiclass_f1)
@@ -261,7 +300,7 @@ def main():
     # Training and test data preparation
     X_tensor, test_X_tensor = prepare_data_itransformer(X, test_X)
 
-    if args.model_name == 'pretrain':
+    if args.model_name == 'pretrain' or args.model_name == 'pretrain_fftformer':
         train_and_predict_models(X_tensor, test_X_tensor, train_df, \
                                 targets_binary, target_multiclass, \
                                 args.epochs, args.lr, args.batch_size, args.hidden, args.model_name, args.num_heads)
@@ -270,9 +309,6 @@ def main():
     binary_preds, multiclass_pred, avg_f1_score = train_and_predict_models(X_tensor, test_X_tensor, train_df, \
                                     targets_binary, target_multiclass, \
                                     args.epochs, args.lr, args.batch_size, args.hidden, args.model_name, args.num_heads)
-    
-    binary_preds, multiclass_pred
-    sum_f1_score = sum(binary_preds.values()) / len(binary_preds)
     
     generate_submission(sample_submission, binary_preds, multiclass_pred, f'submission/submission_{args.model_name}_hidden_{args.hidden}_head_{args.num_heads}_f1_{round(avg_f1_score, 4)}).csv')
 

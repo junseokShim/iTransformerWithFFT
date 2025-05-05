@@ -7,7 +7,9 @@ class FourierSelfAttention(nn.Module):
     def __init__(self, d_model, heads=32, dropout=0.1):
         super().__init__()
         self.heads = heads
-        self.scale = (d_model // heads) ** -0.5
+        if d_model <= 0:
+            d_model = 1  # Set d_model to a small positive value
+        self.scale = nn.Parameter(torch.tensor((d_model // self.heads) ** -0.5))
 
         self.to_qkv = nn.Linear(d_model, d_model * 3, bias=False)
         self.to_out = nn.Sequential(
@@ -45,7 +47,7 @@ class ITransformerClassifier(nn.Module):
         self.fc_out = nn.Linear(hidden_dim, num_classes)
 
     def forward(self, x):
-        x = self.fc_in(x)
+        x = self.fc_in(x.squeeze(1)).unsqueeze(1)
         x = self.fourier_attn(x)
         x = x.mean(dim=1)  # 평균 풀링
         return self.fc_out(x)
@@ -56,7 +58,7 @@ class ITransformerPretrainer(nn.Module):
     def __init__(self, input_dim, hidden_dim, num_heads):
         super().__init__()
         self.fc_in = nn.Linear(input_dim, hidden_dim)
-        self.encoder = FourierSelfAttention(num_heads)
+        self.encoder = FourierSelfAttention(hidden_dim, num_heads)
         self.decoder = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
@@ -67,7 +69,7 @@ class ITransformerPretrainer(nn.Module):
         """
         x: [B, T, D], mask: [B, T] → 복원 loss는 masked 위치에 대해서만 계산
         """
-        x_encoded = self.fc_in(x)
+        x_encoded = self.fc_in(x.squeeze(1)).unsqueeze(1)
         x_encoded = self.encoder(x_encoded)
         x_decoded = self.decoder(x_encoded)  # [B, T, D]
 

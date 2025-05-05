@@ -6,7 +6,7 @@ import torch.nn as nn
 def train_model(model, dataloader, criterion, optimizer, col, epochs=20):
     # 내부에서 validation set 분리
     dataset = dataloader.dataset
-    val_size = int(len(dataset) * 0.3)
+    val_size = int(len(dataset) * 0.2)
     train_size = len(dataset) - val_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 
@@ -70,12 +70,12 @@ def train_model(model, dataloader, criterion, optimizer, col, epochs=20):
     return best_val_loss
 
 
-def train_pretraining_model_with_val(model, dataloader, optimizer, epochs=100, mask_ratio=0.15, patience=10, save_path="pretrained_itransformer.pt"):
+def train_pretraining_model_with_val(model, dataloader, optimizer, epochs=100, mask_ratio=0.15, patience=100, save_path="pretrained_itransformer.pt"):
     criterion = nn.MSELoss()
 
     # ✅ Train/Validation Split
     dataset = dataloader.dataset
-    val_size = int(len(dataset) * 0.3)
+    val_size = int(len(dataset) * 0.2)
     train_size = len(dataset) - val_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 
@@ -134,7 +134,7 @@ def train_pretraining_model_with_val(model, dataloader, optimizer, epochs=100, m
     print("🎯 Pretraining complete.")
 
 
-def random_mask_input(x, mask_ratio=0.15):
+def random_mask_input(x, mask_ratio=0.1):
     """
     입력 시계열 x [B, T, D] 중 일부를 mask (0으로) 처리하고, mask 위치를 반환
     """
