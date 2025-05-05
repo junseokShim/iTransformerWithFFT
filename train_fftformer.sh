@@ -1,81 +1,8 @@
-# # pre-training
-python main.py --epochs 100 --lr 0.0005 --hidden 16 --batch_size 128 --num_heads 4 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 32 --batch_size 128 --num_heads 4 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 64 --batch_size 128 --num_heads 4 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 128 --batch_size 128 --num_heads 4 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 256 --batch_size 128 --num_heads 4 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 512 --batch_size 128 --num_heads 4 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 1024 --batch_size 128 --num_heads 4 --model_name "pretrain_fftformer"
+# hidden: 16 → 1024, num_heads: 4 → 64 (모두 순서 유지)
 
-python main.py --epochs 100 --lr 0.0005 --hidden 16 --batch_size 128 --num_heads 8 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 32 --batch_size 128 --num_heads 8 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 64 --batch_size 128 --num_heads 8 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 128 --batch_size 128 --num_heads 8 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 256 --batch_size 128 --num_heads 8 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 512 --batch_size 128 --num_heads 8 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 1024 --batch_size 128 --num_heads 8 --model_name "pretrain_fftformer"
-
-python main.py --epochs 100 --lr 0.0005 --hidden 16 --batch_size 128 --num_heads 16 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 32 --batch_size 128 --num_heads 16 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 64 --batch_size 128 --num_heads 16 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 128 --batch_size 128 --num_heads 16 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 256 --batch_size 128 --num_heads 16 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 512 --batch_size 128 --num_heads 16 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 1024 --batch_size 128 --num_heads 16 --model_name "pretrain_fftformer"
-
-python main.py --epochs 100 --lr 0.0005 --hidden 16 --batch_size 128 --num_heads 32 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 32 --batch_size 128 --num_heads 32 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 64 --batch_size 128 --num_heads 32 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 128 --batch_size 128 --num_heads 32 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 256 --batch_size 128 --num_heads 32 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 512 --batch_size 128 --num_heads 32 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 1024 --batch_size 128 --num_heads 32 --model_name "pretrain_fftformer"
-
-python main.py --epochs 100 --lr 0.0005 --hidden 16 --batch_size 128 --num_heads 64 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 32 --batch_size 128 --num_heads 64 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 64 --batch_size 128 --num_heads 64 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 128 --batch_size 128 --num_heads 64 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 256 --batch_size 128 --num_heads 64 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 512 --batch_size 128 --num_heads 64 --model_name "pretrain_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 1024 --batch_size 128 --num_heads 64 --model_name "pretrain_fftformer"
-
-# fine-tunning_fftformer
-python main.py --epochs 100 --lr 0.0005 --hidden 16 --batch_size 128 --num_heads 4 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 32 --batch_size 128 --num_heads 4 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 64 --batch_size 128 --num_heads 4 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 128 --batch_size 128 --num_heads 4 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 256 --batch_size 128 --num_heads 4 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 512 --batch_size 128 --num_heads 4 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 1024 --batch_size 128 --num_heads 4 --model_name "fine-tunning_fftformer"
-
-python main.py --epochs 100 --lr 0.0005 --hidden 16 --batch_size 128 --num_heads 8 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 32 --batch_size 128 --num_heads 8 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 64 --batch_size 128 --num_heads 8 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 128 --batch_size 128 --num_heads 8 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 256 --batch_size 128 --num_heads 8 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 512 --batch_size 128 --num_heads 8 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 1024 --batch_size 128 --num_heads 8 --model_name "fine-tunning_fftformer"
-
-python main.py --epochs 100 --lr 0.0005 --hidden 16 --batch_size 128 --num_heads 16 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 32 --batch_size 128 --num_heads 16 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 64 --batch_size 128 --num_heads 16 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 128 --batch_size 128 --num_heads 16 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 256 --batch_size 128 --num_heads 16 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 512 --batch_size 128 --num_heads 16 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 1024 --batch_size 128 --num_heads 16 --model_name "fine-tunning_fftformer"
-
-python main.py --epochs 100 --lr 0.0005 --hidden 16 --batch_size 128 --num_heads 32 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 32 --batch_size 128 --num_heads 32 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 64 --batch_size 128 --num_heads 32 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 128 --batch_size 128 --num_heads 32 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 256 --batch_size 128 --num_heads 32 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 512 --batch_size 128 --num_heads 32 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 1024 --batch_size 128 --num_heads 32 --model_name "fine-tunning_fftformer"
-
-python main.py --epochs 100 --lr 0.0005 --hidden 16 --batch_size 128 --num_heads 64 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 32 --batch_size 128 --num_heads 64 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 64 --batch_size 128 --num_heads 64 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 128 --batch_size 128 --num_heads 64 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 256 --batch_size 128 --num_heads 64 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 512 --batch_size 128 --num_heads 64 --model_name "fine-tunning_fftformer"
-python main.py --epochs 100 --lr 0.0005 --hidden 1024 --batch_size 128 --num_heads 64 --model_name "fine-tunning_fftformer"
+for hidden in 16 32 64 128 256 512 1024; do
+  for heads in 4 8 16 32 64; do
+    python main.py --epochs 100 --lr 0.0005 --hidden $hidden --batch_size 128 --num_heads $heads --model_name "pretrain_fftformer"
+    python main.py --epochs 100 --lr 0.0005 --hidden $hidden --batch_size 128 --num_heads $heads --model_name "fine-tunning_fftformer"
+  done
+done
