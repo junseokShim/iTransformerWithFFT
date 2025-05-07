@@ -111,10 +111,7 @@ def prepare_train_test_data(metrics_train, merged_df):
 # -------------------------- 모델 학습 --------------------------
 def train_and_predict_models(X_tensor, test_X_tensor, train_df, targets_binary, target_multiclass, epochs, lr, batch_size, hidden_dim, model_name, num_heads):
     binary_preds = {}
-    binary_loss = {}
     binary_f1 = {}
-
-    print(X_tensor.shape, test_X_tensor.shape)
 
     f1_scores = []
 
@@ -139,6 +136,10 @@ def train_and_predict_models(X_tensor, test_X_tensor, train_df, targets_binary, 
 
     for col in targets_binary:
         y_tensor = torch.tensor(train_df[col].values, dtype=torch.long)
+
+        print("X_tensor shape:", X_tensor.shape)
+        print("y_tensor shape:", y_tensor.shape)
+
         dataset = TensorDataset(X_tensor, y_tensor)
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
         
@@ -194,7 +195,7 @@ def train_and_predict_models(X_tensor, test_X_tensor, train_df, targets_binary, 
 
         # ✅ FourierSelfAttention 파라미터 freeze
         for param in pretrained_encoder.parameters():
-                param.requires_grad = False
+                param.requires_grad = True
         model_multi = ITransformerClassifier(input_dim=X_tensor.shape[-1], num_classes=3, hidden_dim=int(hidden_dim), num_heads=int(num_heads), pretrained_encoder=pretrained_encoder)
 
     elif model_name == 'fine-tunning_fftformer':
@@ -206,7 +207,7 @@ def train_and_predict_models(X_tensor, test_X_tensor, train_df, targets_binary, 
 
         # ✅ FourierSelfAttention 파라미터 freeze
         for param in pretrained_encoder.parameters():
-                param.requires_grad = False
+                param.requires_grad = True
         model_multi = FFTformerClassifier(input_dim=X_tensor.shape[-1], num_classes=3, hidden_dim=int(hidden_dim), num_heads=int(num_heads), pretrained_encoder=pretrained_encoder)
 
 
@@ -228,6 +229,27 @@ def train_and_predict_models(X_tensor, test_X_tensor, train_df, targets_binary, 
     return binary_preds, multiclass_pred, avg_f1
 
 
+def prepare_data_to_sequence(X, test_X, seq_len=32, stride=1):
+    def sliding_windows_with_padding(data, seq_len, stride):
+        data = data.astype(np.float32)
+        sequences = []
+        for i in range(0, len(data), stride):
+            if i < seq_len - 1:
+                # 앞부분 부족 시 padding (zero-padding)
+                pad = np.zeros((seq_len - 1 - i, data.shape[1]), dtype=np.float32)
+                seq = np.concatenate([pad, data[:i+1]], axis=0)
+            else:
+                seq = data[i - seq_len + 1:i + 1]
+            sequences.append(seq)
+        return torch.tensor(sequences)  # [len(data), seq_len, D]
+
+    X_seq = sliding_windows_with_padding(X.values, seq_len, stride)
+    test_X_seq = sliding_windows_with_padding(test_X.values, seq_len, stride)
+
+    return X_seq, test_X_seq
+
+
+
 # -------------------------- 제출 파일 생성 --------------------------
 def generate_submission(sample_submission, binary_preds, multiclass_pred, filename):
     sample_submission['lifelog_date'] = pd.to_datetime(sample_submission['lifelog_date']).dt.date
@@ -246,10 +268,6 @@ def generate_submission(sample_submission, binary_preds, multiclass_pred, filena
 def main():
     seed_everything(42)
     args = parse_args()
-    data_dir = 'dataset/ch2025_data_items'
-
-    lifelog_data = load_parquet_files(data_dir)
-    assign_to_globals(lifelog_data)
 
     metrics_train = pd.read_csv('dataset/ch2025_data_items/ch2025_metrics_train.csv')
     sample_submission = pd.read_csv('dataset/ch2025_submission_sample.csv')
@@ -265,6 +283,10 @@ def main():
 
     X = sanitize_column_names(X)
     test_X = sanitize_column_names(test_X)
+
+
+    X, test_X = prepare_data_to_sequence(X, test_X)
+
 
     # Training and test data preparation
     X_tensor, test_X_tensor = prepare_data_itransformer(X, test_X)

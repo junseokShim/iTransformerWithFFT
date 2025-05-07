@@ -24,7 +24,7 @@ class FourierSelfAttention(nn.Module):
         k_fft = torch.fft.rfft(k.float(), dim=-2)
 
         attn = (q_fft.conj() * k_fft).sum(dim=-1).real * self.scale
-        attn = F.softmax(attn, dim=-1)
+        attn = F.softmax(attn + 1e-6, dim=-1)
 
         v_fft = torch.fft.rfft(v.float(), dim=-2)
         out_fft = attn.unsqueeze(-1) * v_fft

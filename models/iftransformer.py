@@ -77,7 +77,7 @@ class IFTransformerClassifier(nn.Module):
         self.fc_out = nn.Linear(hidden_dim, num_classes)
 
     def forward(self, x):
-        x = self.fc_in(x.squeeze(1)).unsqueeze(1)  # [B, 1, D] -> [B, 1, H]
+        x = self.fc_in(x)  # [B, 1, D] -> [B, 1, H]
         #x = self.pos_embed(x)
 
         for layer in self.layers:
