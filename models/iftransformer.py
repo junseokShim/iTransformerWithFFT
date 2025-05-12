@@ -35,10 +35,10 @@ class FourierSelfAttention(nn.Module):
 
 # 2. PreNorm Fourier Encoder Layer
 class FourierEncoderLayer(nn.Module):
-    def __init__(self, d_model, heads=32, dropout=0.1):
+    def __init__(self, d_model, num_heads=32, dropout=0.1):
         super().__init__()
         self.norm1 = nn.LayerNorm(d_model)
-        self.attn = FourierSelfAttention(d_model, heads, dropout)
+        self.attn = FourierSelfAttention(d_model, num_heads, dropout)
 
         self.norm2 = nn.LayerNorm(d_model)
         self.ff = nn.Sequential(
@@ -56,7 +56,7 @@ class FourierEncoderLayer(nn.Module):
 
 # 3. Learnable Positional Encoding
 class PositionalEncoding(nn.Module):
-    def __init__(self, d_model, max_len=5000):
+    def __init__(self, d_model, max_len=14):
         super().__init__()
         self.pe = nn.Parameter(torch.zeros(1, max_len, d_model))
 
@@ -65,13 +65,13 @@ class PositionalEncoding(nn.Module):
 
 # 4. 최종 Transformer Classifier
 class IFTransformerClassifier(nn.Module):
-    def __init__(self, input_dim, num_classes, hidden_dim=256, n_layers=6, max_len=5000, dropout=0.1):
+    def __init__(self, input_dim, num_classes, hidden_dim=128, num_heads = 32,  n_layers=6, max_len=14, dropout=0.1):
         super().__init__()
         self.fc_in = nn.Linear(input_dim, hidden_dim)
         self.pos_embed = PositionalEncoding(hidden_dim, max_len)
 
         self.layers = nn.ModuleList([
-            FourierEncoderLayer(hidden_dim, dropout=dropout) for _ in range(n_layers)
+            FourierEncoderLayer(hidden_dim, num_heads, dropout=dropout) for _ in range(n_layers)
         ])
 
         self.fc_out = nn.Linear(hidden_dim, num_classes)

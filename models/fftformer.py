@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 # Fourier Self-Attention (실수 연산 기반)
 class FourierSelfAttention(nn.Module):
-    def __init__(self, d_model, heads=8, dropout=0.1):
+    def __init__(self, d_model, heads=8, dropout=0.3):
         super().__init__()
         self.heads = heads
         self.scale = (d_model // heads) ** -0.5
@@ -36,7 +36,7 @@ class FourierSelfAttention(nn.Module):
 
 # ▶ Transformer Block with FourierSelfAttention + FFN + Residual + LayerNorm
 class FourierTransformerBlock(nn.Module):
-    def __init__(self, d_model, heads=8, dropout=0.1):
+    def __init__(self, d_model, heads=8, dropout=0.3):
         super().__init__()
         self.attn = FourierSelfAttention(d_model, heads, dropout)
         self.norm1 = nn.LayerNorm(d_model)
@@ -57,7 +57,7 @@ class FourierTransformerBlock(nn.Module):
 
 # ▶ Classifier (Encoder + Mean Pooling + Classifier Head)
 class FFTformerClassifier(nn.Module):
-    def __init__(self, input_dim, num_classes, hidden_dim, num_heads, num_layers=6, pretrained_encoder = None):
+    def __init__(self, input_dim, num_classes, hidden_dim, num_heads, num_layers=12, pretrained_encoder = None):
         super().__init__()
         self.fc_in = nn.Linear(input_dim, hidden_dim)
         if pretrained_encoder:
