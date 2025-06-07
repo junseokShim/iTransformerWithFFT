@@ -6,7 +6,7 @@ import torch.nn as nn
 def train_model(model, dataloader, criterion, optimizer, col, epochs=20):
     # 내부에서 validation set 분리
     dataset = dataloader.dataset
-    val_size = int(len(dataset) * 0.2)
+    val_size = int(len(dataset) * 0.4)
     train_size = len(dataset) - val_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 

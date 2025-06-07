@@ -62,6 +62,57 @@ class PositionalEncoding(nn.Module):
 
     def forward(self, x):
         return x + self.pe[:, :x.size(1), :]
+    
+
+class MultiScaleFourier(nn.Module):
+    def __init__(self, hidden_dim, scales=[1,2,4]):
+        super().__init__()
+        self.scales = scales
+        self.convs = nn.ModuleList([
+            nn.Conv1d(hidden_dim, hidden_dim, kernel_size=scale, padding='same')
+            for scale in scales
+        ])
+
+    def forward(self, x):
+        fft_feats = torch.fft.rfft(x, dim=1).real
+        multi_feats = [conv(fft_feats.transpose(1,2)).transpose(1,2) for conv in self.convs]
+        return torch.cat(multi_feats, dim=-1)
+
+
+class PatchEmbedding(nn.Module):
+    def __init__(self, hidden_dim, patch_size):
+        super().__init__()
+        self.patch_size = patch_size
+        self.linear = nn.Linear(hidden_dim * patch_size, hidden_dim)
+
+    def forward(self, x):
+        B, T, D = x.shape
+        assert T % self.patch_size == 0
+        x = x.reshape(B, T // self.patch_size, self.patch_size * D)
+        return self.linear(x)
+
+
+class SimpleSSM(nn.Module):
+    def __init__(self, hidden_dim):
+        super().__init__()
+        self.conv1d = nn.Conv1d(hidden_dim, hidden_dim, kernel_size=3, padding=1)
+        self.norm = nn.LayerNorm(hidden_dim)
+
+    def forward(self, x):
+        x_ssm = self.conv1d(x.transpose(1,2)).transpose(1,2)
+        return self.norm(x + x_ssm)
+
+
+class ShapeAwareEmbedding(nn.Module):
+    def __init__(self, hidden_dim):
+        super().__init__()
+        self.shape_linear = nn.Linear(hidden_dim, hidden_dim)
+
+    def forward(self, x):
+        shape_feat = torch.diff(x, dim=1, prepend=x[:, :1, :])
+        return x + self.shape_linear(shape_feat)
+
+
 
 # 4. 최종 Transformer Classifier
 class IFTransformerClassifier(nn.Module):
@@ -74,6 +125,76 @@ class IFTransformerClassifier(nn.Module):
             FourierEncoderLayer(hidden_dim, num_heads, dropout=dropout) for _ in range(n_layers)
         ])
 
+        self.fc_out = nn.Linear(hidden_dim, num_classes)
+
+    def forward(self, x):
+        x = self.fc_in(x)  # [B, 1, D] -> [B, 1, H]
+        #x = self.pos_embed(x)
+
+        for layer in self.layers:
+            x = layer(x)
+
+        x = x.mean(dim=1)  # Global Average Pooling
+        return self.fc_out(x)
+
+
+class AdvancedIFTransformerClassifier(nn.Module):
+    def __init__(self, input_dim, num_classes, hidden_dim=256, num_heads=8, n_layers=4, patch_size=2, dropout=0.1):
+        super().__init__()
+        self.fc_in = nn.Linear(input_dim, hidden_dim)
+        self.pos_embed = PositionalEncoding(hidden_dim, max_len=100)
+
+        self.patch_embed = PatchEmbedding(hidden_dim, patch_size)
+        self.shape_embed = ShapeAwareEmbedding(hidden_dim)
+        self.multiscale_fourier = MultiScaleFourier(hidden_dim)
+        
+        encoder_dim = hidden_dim * (len(self.multiscale_fourier.scales))
+        
+        self.layers = nn.ModuleList([
+            FourierEncoderLayer(encoder_dim, num_heads, dropout) for _ in range(n_layers)
+        ])
+
+        self.ssm = SimpleSSM(encoder_dim)
+
+        self.fc_out = nn.Linear(hidden_dim, num_classes)
+
+    def forward(self, x):
+        x = self.fc_in(x)
+        x = self.pos_embed(x)
+        x = self.shape_embed(x)
+        x = self.patch_embed(x)
+        x = self.multiscale_fourier(x)
+
+        for layer in self.layers:
+            x = layer(x)
+
+        x = self.ssm(x)
+
+        x = x.mean(dim=1)
+        return self.fc_out(x)
+
+
+class IFTransformer(nn.Module):
+    def __init__(self, input_dim, num_classes, hidden_dim=256, num_heads=64, n_layers=6, max_len=14, dropout=0.1):
+        super().__init__()
+        self.fc_in = nn.Linear(input_dim, hidden_dim)
+        self.pos_embed = PositionalEncoding(hidden_dim, max_len)
+        self.patch_embed = PatchEmbedding(hidden_dim, patch_size = 1) # 0.587
+        self.shape_embed = ShapeAwareEmbedding(hidden_dim)
+
+        self.layers = nn.ModuleList([
+            FourierEncoderLayer(hidden_dim, num_heads, dropout=dropout) for _ in range(n_layers)
+        ])
+
+        self.ssm = SimpleSSM(hidden_dim)
+        self.norm = nn.LayerNorm(hidden_dim)
+
+        # self.fc_out = nn.Sequential(
+        #     nn.Linear(hidden_dim, hidden_dim//2),
+        #     nn.ReLU(),
+        #     nn.Dropout(dropout),
+        #     nn.Linear(hidden_dim//2, num_classes)
+        # )
         self.fc_out = nn.Linear(hidden_dim, num_classes)
 
     def forward(self, x):

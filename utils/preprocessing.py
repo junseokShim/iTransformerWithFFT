@@ -459,11 +459,23 @@ def prepare_data(X_train, X_test):
 
 # 데이터 전처리 (iTransformer 입력 방식 적용)
 def prepare_data_itransformer(X_train, X_test):
-    scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
+    # Step 1: Tensor 변환 및 reshape
+    X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
+    X_test_tensor = torch.tensor(X_test, dtype=torch.float32)
 
-    # iTransformer 방식: [B, T, D] 형태로 변환
-    X_train_seq = torch.tensor(X_train_scaled, dtype=torch.float32).unsqueeze(1)  # T=1
-    X_test_seq = torch.tensor(X_test_scaled, dtype=torch.float32).unsqueeze(1)
+    B1, T1, D = X_train_tensor.shape
+    B2, T2, _ = X_test_tensor.shape
+
+    X_train_2d = X_train_tensor.reshape(-1, D)  # (B*T, D)
+    X_test_2d = X_test_tensor.reshape(-1, D)
+
+    # Step 2: StandardScaler 적용
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train_2d)
+    X_test_scaled = scaler.transform(X_test_2d)
+
+    # Step 3: 다시 시퀀스 형태로 reshape
+    X_train_seq = torch.tensor(X_train_scaled, dtype=torch.float32).reshape(B1, T1, D)
+    X_test_seq = torch.tensor(X_test_scaled, dtype=torch.float32).reshape(B2, T2, D)
+
     return X_train_seq, X_test_seq
